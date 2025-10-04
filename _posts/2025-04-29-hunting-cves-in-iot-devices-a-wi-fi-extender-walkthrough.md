@@ -1,7 +1,7 @@
 ---
 title: Hunting CVEs in IoT Devices - A Wi-Fi Extender Walkthrough
 date: 2025-04-29 12:12:12
-categories: [Ethical Hacking, Hardware]
+categories: [Hardware]
 media_subpath: /assets/posts/2025-04-29-hunting-cves-in-iot-devices-a-wi-fi-extender-walkthrough/
 tags: [iot, hardware, rce]
 ---
