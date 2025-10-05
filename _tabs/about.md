@@ -6,9 +6,9 @@ order: 4
 
 ## About
 
-I build cool products with embedded electronics and software.
+I build cool products with embedded electronics, firmware, and software.
 
-I'm highly skilled in ethical hacking, with a current focus on web applications, Windows Active Directory, and IoT security.
+Well-versed in ethical hacking, with a current focus on web applications, Windows Active Directory, and IoT security.
 
 Veteran HackTheBox player.
 
