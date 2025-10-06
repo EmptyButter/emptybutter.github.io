@@ -10,7 +10,7 @@ I build cool products with embedded electronics, firmware, and software.
 
 Well-versed in ethical hacking, with a current focus on web applications, Windows Active Directory, and IoT security.
 
-Veteran HackTheBox player.
+Veteran HackTheBox player. [_profile_](https://app.hackthebox.com/profile/1364912)
 
 ## Certifications
 
