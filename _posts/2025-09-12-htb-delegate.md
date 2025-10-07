@@ -3,12 +3,10 @@ title: "HTB: Delegate"
 date: 2025-09-12 12:12:12
 categories: [HTB Writeup]
 media_subpath: /assets/posts/2025-09-12-htb-delegate/
-<!-- image: -->
-<!--   path: delegate.png -->
+image: delegate_wide.png
+description: Delegate features a vulnerable delegation scenario with the "SeEnableDelegationPrivilege" privilege. In this write-up, I showcase the planning and execution of different attack techniques, including a specific case of unconstrained delegation.
 tags: [htb, windows, nmap, netexec, smbclient, bloodyAD, bloodhound-ce-python, targetedKerberoast-py, hashcat, evil-winrm, addcomputer-py, dnstool-py, nslookup, addspn-py, pypykatz, krbrelayx-py, printerbug-py, secretsdump-py, credential-harvesting, dacl-abuse, shadow-credentials, targeted-kerberoasting, unconstrained-delegation, dcsync, SeEnableDelegationPrivilege]
 ---
-
-![](delegate.png)
 
 {: .centered }
 |**OS**|**Difficult**|
@@ -16,8 +14,6 @@ tags: [htb, windows, nmap, netexec, smbclient, bloodyAD, bloodhound-ce-python, t
 
 _Tools Used_\
 `nmap`, `netexec`, `smbclient`, `bloodyAD`, `bloodhound-ce-python`, `targetedKerberoast.py`, `hashcat`, `evil-winrm`, `addcomputer.py`, `dnstool.py`, `nslookup`, `addspn.py`, `pypykatz`, `krbrelayx.py`, `printerbug.py`, `secretsdump.py`
-
-Delegate features a vulnerable delegation scenario with the "SeEnableDelegationPrivilege" privilege. In this write-up, I showcase the planning and execution of different attack techniques, including a specific case of unconstrained delegation.
 
 ## Attack Summary
 1. Ran `nxc` and identified guest login was enabled.
