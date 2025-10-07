@@ -17,6 +17,8 @@ tags: [htb, windows, nmap, netexec, smbclient, bloodyAD, bloodhound-ce-python, t
 _Tools Used_\
 `nmap`, `netexec`, `smbclient`, `bloodyAD`, `bloodhound-ce-python`, `targetedKerberoast.py`, `hashcat`, `evil-winrm`, `addcomputer.py`, `dnstool.py`, `nslookup`, `addspn.py`, `pypykatz`, `krbrelayx.py`, `printerbug.py`, `secretsdump.py`
 
+Delegate features a vulnerable delegation scenario with the "SeEnableDelegationPrivilege" privilege. In this write-up, I showcase the planning and execution of different attack techniques, including a specific case of unconstrained delegation.
+
 ## Attack Summary
 1. Ran `nxc` and identified guest login was enabled.
 2. Ran `smbclient` to enumerate the shares and found valid credentials for `a.briggs`.
