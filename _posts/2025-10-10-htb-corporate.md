@@ -1031,7 +1031,9 @@ Then I could visit the site.
 I attempted to logged as `elwin.jones`. However, the 2FA code was incorrect.
 ![](Pasted%20image%2020251010073959.png)
 
-This was because TOTP calculation is based on machine local time, and the time zone between my VM and the server were different. I had to sync the time.
+This was because the time between my VM and the server were off, resulting in TOTP code mismatch. I needed to sync the time.
+
+I fetched the server time in epoch seconds and updated my local time with it.
 ```
 ❯ sudo date -s "@$(ssh elwin.jones@10.9.0.4 'date +%s')"
 elwin.jones@10.9.0.4's password:
