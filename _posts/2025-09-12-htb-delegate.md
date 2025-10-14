@@ -9,8 +9,8 @@ tags: [htb, windows, nmap, netexec, smbclient, bloodyAD, bloodhound-ce-python, t
 ---
 
 {: .centered }
-|**OS**|**Difficult**|
-|Windows|Medium|
+|**OS**|**Difficult**|**Release Date**|
+|Windows|Medium|11 Sep 2025|
 
 _Tools Used_\
 `nmap`, `netexec`, `smbclient`, `bloodyAD`, `bloodhound-ce-python`, `targetedKerberoast.py`, `hashcat`, `evil-winrm`, `addcomputer.py`, `dnstool.py`, `nslookup`, `addspn.py`, `pypykatz`, `krbrelayx.py`, `printerbug.py`, `secretsdump.py`

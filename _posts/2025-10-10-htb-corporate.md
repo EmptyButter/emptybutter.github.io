@@ -9,8 +9,8 @@ image: corporate_wide.png
 ---
 
 {: .centered }
-|**OS**|**Difficult**|
-|Windows|Insane|
+|**OS**|**Difficult**|**Release Date**|
+|Windows|Insane|16 Dec 2023|
 
 _Tools Used_\
 `nmap`, `curl`, `ffuf`, `Burp Suite`, `CyberChef`, `ldapsearch`, `openvpn`, `hydra`, `getent`, `fzf`, `nc`, `python3`, `moz-idb-edit`, `bitwarden-pin-bruteforce`, `linpeas.sh`, `lazygit`.
