@@ -1,5 +1,5 @@
 ---
-title: "Kerberos Fundamentals"
+title: Kerberos Fundamentals
 categories:
   - Tutorial
 media_subpath: /assets/posts/2025-10-23-kerberos-fundamentals/
@@ -61,8 +61,8 @@ A Ticket Granting Ticket (TGT) and a Ticket Granting Service (TGS) ticket share 
 ```
 
 ## Workflow (High-level)
-![](Pasted%20image%2020251020053003.png)
-![](Pasted%20image%2020251020054434.png){: w="350" h="50"}
+![](Pasted%20image%2020251029204706.png)\
+![](Pasted%20image%2020251020054434.png){: w="450" h="50"}
 
 Note: The red key here is technically the long-term key of the Ticket Granting Service, which is a component of the KDC. For simplicity and readability, it is referred to here as the KDC long-term key.
 
@@ -108,6 +108,11 @@ KDC-REQ-BODY    ::= SEQUENCE {
 ```
 
 ![](Pasted%20image%2020251020064541.png)
+
+### ASREQRoast Attack
+When positioned as a man-in-the-middle (MitM), an attacker may capture AS-REQ pre-authentication messages that contain encrypted timestamps. The attacker can then crack those encrypted timestamps offline to recover the user's password.\
+![](Pasted%20image%2020251029200319.png){: w="550" h="50"}
+
 ## AS-REP
 Authentication Server Response: Sent by the KDC to the client in response to an AS-REQ. It contains the TGT and a user-KDC session key. 
 ![](Pasted%20image%2020251020053643.png)
@@ -155,6 +160,15 @@ LastReq         ::=     SEQUENCE OF SEQUENCE {
 ```
 
 ![](Pasted%20image%2020251020064606.png)
+
+### ASREPRoast Attack
+When pre-authentication is explicitly disabled for an account, an attacker can send an AS-REQ request for that user and receive a TGT along with an encrypted session key. The attacker can then crack the encrypted session key offline to recover the user's password.\
+![](Pasted%20image%2020251029200940.png){: w="550" h="50"}
+
+### Golden Ticket
+When an attacker obtains the KDC's (`krbtgt`) long-term key, they can forge a Privilege Attribute Certificate (PAC) asserting membership in privileged groups. The attacker embeds this PAC in a forged TGT (a “Golden Ticket”), then uses the powerful forged TGT to request service tickets.\
+![](Pasted%20image%2020251029203239.png){: w="600" h="50"}
+
 ## TGS-REQ
 Ticket Granting Service Request: Sent by the client to the KDC to request access to a specific service. It includes the TGT obtained earlier and a new authenticator encrypted with the user-KDC session key.
 ![](Pasted%20image%2020251020053717.png)
@@ -195,6 +209,7 @@ KDC-REQ-BODY    ::= SEQUENCE {
 ```
 
 ![](Pasted%20image%2020251020064510.png)
+
 ## TGS-REP
 Ticket Granting Service Response: Sent by the KDC to the client in response to a TGS-REQ.  
 It contains a service ticket and a new session key.
@@ -241,6 +256,15 @@ LastReq         ::=     SEQUENCE OF SEQUENCE {
 ```
 
 ![](Pasted%20image%2020251020070804.png)
+
+### Kerberoasting Attack
+An attacker uses a valid TGT to request a service ticket (TGS) for a service principal name (SPN). The returned service ticket is encrypted with the service account's password-derived key; the attacker can extract the ticket ciphertext and crack it offline to recover the service account's password.\
+![](Pasted%20image%2020251029201035.png){: w="550" h="50"}
+
+### Silver Ticket
+When an attacker obtains the long-term key of a service account, they can forge a service ticket (TGS) encrypted with that key. It will be accepted by the target service without contacting the domain controller, because the ticket is encrypted using the legitimate service account key. The forged ticket can include manipulated authorization data, such as group memberships, granting the attacker access to the service under the impersonated account.\
+![](Pasted%20image%2020251029203318.png){: w="600" h="50"}
+
 ## AP-REQ
 Application Request: Sent by the client to the target service to prove its identity and request access.  It includes the TGS ticket and a fresh authenticator encrypted with the user-service session key.
 ![](Pasted%20image%2020251020080723.png)
