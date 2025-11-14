@@ -8,9 +8,10 @@ order: 4
 
 I build cool products with embedded electronics, firmware, and software.
 
-Well-versed in ethical hacking, with a current focus on web applications, Windows Active Directory, and IoT security.
+I’m skilled in ethical hacking and hold several industry-standard certifications. My current focus areas include web application, Windows Active Directory, and IoT security.
 
-Veteran HackTheBox player. [_profile_](https://app.hackthebox.com/profile/1364912)
+I'm a veteran HackTheBox player.\
+[![htb](https://www.hackthebox.com/badge/image/1364912)](https://app.hackthebox.com/profile/1364912)
 
 ## Certifications
 
