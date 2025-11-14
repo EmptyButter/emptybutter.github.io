@@ -4,8 +4,6 @@ icon: fas fa-info-circle
 order: 4
 ---
 
-## About
-
 I build cool products with embedded electronics, firmware, and software.
 
 I’m skilled in ethical hacking and hold several industry-standard certifications. My current focus areas include web application, Windows Active Directory, and IoT security.
