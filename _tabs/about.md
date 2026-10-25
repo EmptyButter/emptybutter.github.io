@@ -16,6 +16,7 @@ This blog is my personal knowledge base where I document research, experiments, 
 
 - OffSec Certified Professional (OSCP)
 - CREST Registered Penetration Tester (CRT)
+- CREST Practitioner Security Analyst (CPSA)
 - Certified Red Team Operator (CRTO)
 - Certified Red Team Lead (CRTL)
 - Certified Azure Red Team Professional (CARTP)
